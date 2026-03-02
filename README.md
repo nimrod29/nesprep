@@ -157,6 +157,40 @@ Dates use "D.M" format (e.g., "1.4" for April 1st).
 
 ## API Endpoints
 
+### Authentication
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/auth/signup` | POST | Register new manager |
+| `/api/auth/signin` | POST | Login with email/password |
+| `/api/auth/me` | GET | Get current manager (requires Bearer token) |
+
+**Signup/Signin Request:**
+```json
+{
+  "email": "manager@example.com",
+  "password": "securepassword",
+  "name": "Manager Name",
+  "role": "מנהל בוטיק"  // or "מנהל אזור" or "הנהלה בכירה"
+}
+```
+
+**Response:**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "token_type": "bearer",
+  "manager": {
+    "id": 1,
+    "email": "manager@example.com",
+    "name": "Manager Name",
+    "role": "מנהל בוטיק"
+  }
+}
+```
+
+### Sessions
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/sessions` | GET | List chat sessions |
@@ -169,10 +203,21 @@ Dates use "D.M" format (e.g., "1.4" for April 1st).
 Environment variables (`.env`):
 
 ```bash
-ANTHROPIC_API_KEY=sk-ant-...     # Required for Claude AI
-DATABASE_URL=sqlite:///data.db   # Database connection
-TEMPLATE_PATH=templates/shift_template.xlsx  # Excel template
-OUTPUT_DIR=output                # Generated files directory
+# AWS Bedrock (for Claude AI)
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_REGION=us-east-1
+
+# Database
+DATABASE_URL=sqlite:///./nesprep.db
+
+# JWT Authentication
+JWT_SECRET_KEY=change-this-in-production
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=10080  # 7 days
+
+# Server
+WEBSOCKET_PORT=9002
+OUTPUT_DIR=./output
 ```
 
 ## File Structure
@@ -185,6 +230,10 @@ nesprep/
 │   │   ├── shift_planner.py
 │   │   └── validator.py
 │   ├── api/              # FastAPI routes
+│   ├── auth/             # Authentication module
+│   │   ├── password.py   # Bcrypt hashing
+│   │   ├── jwt.py        # JWT token handling
+│   │   └── dependencies.py  # FastAPI auth dependencies
 │   ├── dal/              # Database models
 │   ├── prompts/          # System prompts
 │   ├── tools/            # Agent tools
