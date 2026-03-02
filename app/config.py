@@ -1,6 +1,7 @@
 """Application settings."""
 
 import os
+import secrets
 
 from pydantic_settings import BaseSettings
 
@@ -22,6 +23,11 @@ class Settings(BaseSettings):
 
     # Default template path (relative to project root)
     DEFAULT_TEMPLATE_PATH: str = "./templates/shift_template.xlsx"
+
+    # JWT Authentication
+    JWT_SECRET_KEY: str = secrets.token_urlsafe(32)
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
