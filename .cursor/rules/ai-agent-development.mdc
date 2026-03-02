@@ -1,0 +1,194 @@
+---
+description: AI agent development guidelines for NesPrep Shift Planning
+alwaysApply: true
+---
+
+# AI Agent Development Rules
+
+## Overview
+
+Agents live in `app/agents/`. The primary model is Anthropic Claude via AWS Bedrock. LangChain is the abstraction layer. Agents use tools to interact with Excel files and the database.
+
+---
+
+## Philosophy
+
+- **Tool-calling agents**: Agents use LangChain's `create_tool_calling_agent` to build tool-calling executors
+- **Status callbacks**: Agents can emit status updates during execution
+- **Closure pattern**: Tools capture instance state via `tools_self = self`
+- **Validation loop**: Planner and Validator work together iteratively
+
+---
+
+## Project Structure
+
+```
+app/
+├── agents/                # AI agent implementations
+│   ├── base_agent.py      # BaseAgent + BaseToolCallingAgent
+│   ├── constraint_analyzer.py  # Parses Hebrew constraints
+│   ├── shift_planner.py   # Creates shift assignments
+│   └── validator.py       # Validates plans
+├── tools/                 # Tool classes with get_tools() pattern
+│   ├── log_tools.py       # log_thought
+│   ├── excel_tools.py     # Excel manipulation
+│   └── constraint_tools.py # Constraint parsing
+├── prompts/               # System prompts as constants
+├── dal/                   # Data Access Layer (SQLAlchemy)
+└── agent_websocket/       # WebSocket server (FastAPI)
+```
+
+---
+
+## Base Agent Pattern
+
+Use `BaseAgent` for simple agents without tools. Use `BaseToolCallingAgent` for agents that need tools.
+
+```python
+from app.agents.base_agent import BaseToolCallingAgent
+
+class MyAgent(BaseToolCallingAgent):
+    def __init__(
+        self,
+        status_callback: Callable[[str], Awaitable[None]] | None = None,
+    ):
+        my_tools = MyTools()
+        super().__init__(
+            agent_name="MyAgent",
+            tools=my_tools.get_tools(),
+            system_prompt=MY_AGENT_SYSTEM_PROMPT,
+            status_callback=status_callback,
+        )
+```
+
+**Inheritance hierarchy:**
+
+```
+BaseAgent (no tools)
+├── ValidatorAgent (validation logic, no tools)
+└── BaseToolCallingAgent (with tools)
+    ├── ConstraintAnalyzerAgent
+    └── ShiftPlannerAgent
+```
+
+---
+
+## Tools Pattern
+
+Tools are organized as classes with a `get_tools()` method that returns a list of `@tool`-decorated functions. Use closures to capture instance state.
+
+```python
+from langchain_core.tools import tool
+
+class MyTools:
+    def __init__(self, **context):
+        self.context = context
+    
+    def get_tools(self) -> list:
+        tools_self = self  # Closure capture
+        
+        @tool
+        def my_tool(arg: str) -> str:
+            """Tool description (becomes the tool's docstring for the LLM)."""
+            return tools_self.do_something(arg)
+        
+        return [my_tool]
+```
+
+### Database Sessions in Tools
+
+**IMPORTANT**: LangChain runs tools in a thread pool executor. Do NOT share database sessions across tools. Each tool that accesses the database MUST create its own session using `get_session()` and close it in a `finally` block.
+
+```python
+from langchain_core.tools import tool
+
+@tool
+def save_something(data: str) -> str:
+    """Save data to the database."""
+    from app.dal import get_session
+    
+    db = get_session()
+    try:
+        MyModel.create(db, data=data)
+        return "Saved successfully"
+    except Exception as e:
+        db.rollback()
+        return f"Error: {str(e)}"
+    finally:
+        db.close()
+```
+
+---
+
+## Prompts Pattern
+
+System prompts are constants in `prompts/`. Include:
+- Clear task description
+- Available tools and their usage
+- Hebrew day/shift mappings
+- Workflow steps
+- Examples
+
+```python
+# prompts/my_agent_prompts.py
+MY_AGENT_SYSTEM_PROMPT = """You are an agent that does X.
+
+# TOOLS
+- tool_a: Description
+- tool_b: Description
+
+# WORKFLOW
+1. Step one
+2. Step two
+
+# EXAMPLES
+Input: "example input"
+→ tool_call(arg="value")
+"""
+```
+
+---
+
+## Adding New Tools
+
+1. Create tool class in `tools/new_tools.py` with `get_tools()` method
+2. Export from `tools/__init__.py`
+3. Add to agent in `agents/`:
+   ```python
+   from app.tools.new_tools import NewTools
+   
+   tools = log_tools.get_tools() + NewTools().get_tools()
+   ```
+4. Document in system prompt
+
+---
+
+## Adding a New Agent
+
+1. Create prompt in `prompts/new_agent_prompts.py`
+2. Create tools class in `tools/new_agent_tools.py` (if needed)
+3. Create agent in `agents/new_agent.py` extending `BaseToolCallingAgent` or `BaseAgent`
+4. Export from `agents/__init__.py`
+5. Integrate into planning handler if needed
+
+---
+
+## Constants Pattern
+
+Keep model names and limits in `consts/`:
+
+```python
+# consts/models.py
+class ModelConsts:
+    CLAUDE_SONNET_4_5 = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+```
+
+---
+
+## Summary
+
+- Agents extend `BaseToolCallingAgent` for tool-calling capability
+- Tools are classes with `get_tools()` returning `@tool`-decorated functions
+- Use `get_session()` + `try/finally` for database access in tools
+- Prompts are constants with clear structure and examples
+- Use `consts/` for model names and configuration values

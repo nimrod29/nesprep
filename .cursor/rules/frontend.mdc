@@ -1,0 +1,242 @@
+---
+description: Frontend development rules for NesPrep React application
+alwaysApply: true
+---
+
+# Frontend Development Rules
+
+## Overview
+
+The frontend is a React + TypeScript application built with Vite. It uses TailwindCSS for styling with full RTL support, Zustand for state management, and WebSocket for real-time agent communication.
+
+---
+
+## Tech Stack
+
+- **React 18** with TypeScript
+- **Vite** for build tooling
+- **TailwindCSS** for styling
+- **Zustand** for state management
+- **WebSocket** for agent communication
+
+---
+
+## Project Structure
+
+```
+frontend/src/
+├── App.tsx                 # Main app component
+├── main.tsx               # Entry point
+├── index.css              # Tailwind + global styles
+├── components/            # UI components
+│   ├── SessionPanel/      # Session sidebar
+│   ├── Chat/              # Chat interface
+│   └── PromptBox/         # Input component
+└── shared/                # Shared utilities
+    ├── auth/              # Auth module (internal store)
+    ├── websocket/         # WebSocket service
+    ├── hooks/             # Shared hooks
+    ├── api/               # REST API client
+    ├── constants/         # Constants
+    └── utils/             # Utilities (cn, etc.)
+```
+
+---
+
+## RTL Support
+
+This app supports Hebrew (RTL). Follow these rules strictly:
+
+### Use Logical Properties
+
+**NEVER use physical properties for directional styling:**
+
+| ❌ Physical | ✅ Logical | Meaning |
+|-------------|-----------|---------|
+| `ml-4` | `ms-4` | margin-inline-start |
+| `mr-4` | `me-4` | margin-inline-end |
+| `pl-4` | `ps-4` | padding-inline-start |
+| `pr-4` | `pe-4` | padding-inline-end |
+| `left-0` | `start-0` | inset-inline-start |
+| `right-0` | `end-0` | inset-inline-end |
+| `text-left` | `text-start` | text-align: start |
+| `text-right` | `text-end` | text-align: end |
+| `rounded-l-*` | `rounded-s-*` | border-start-radius |
+| `rounded-r-*` | `rounded-e-*` | border-end-radius |
+| `border-l-*` | `border-s-*` | border-inline-start |
+| `border-r-*` | `border-e-*` | border-inline-end |
+
+### Flexbox Handles RTL Automatically
+
+Use `justify-start` and `justify-end` - they flip automatically in RTL:
+
+```tsx
+// User messages - on the END side
+<div className="flex justify-end">
+  <div className="rounded-ee-md">User message</div>
+</div>
+
+// Assistant messages - on the START side
+<div className="flex justify-start">
+  <div className="rounded-es-md">Assistant message</div>
+</div>
+```
+
+### Icons That Need Flipping
+
+Some icons should mirror in RTL (arrows, send, logout):
+
+```tsx
+<Send className="h-5 w-5 rtl:scale-x-[-1]" />
+<LogOut className="h-4 w-4 rtl:scale-x-[-1]" />
+```
+
+---
+
+## Module Patterns
+
+### Auth Module
+
+The auth module has an internal Zustand store. Only export the hook:
+
+```tsx
+// shared/auth/index.ts - only exports useAuth
+export { useAuth } from "./useAuth";
+
+// Usage
+const { managerId, login, logout } = useAuth();
+```
+
+### WebSocket Module
+
+WebSocket service is a singleton. Use the exported instance:
+
+```tsx
+import { wsService } from "@/shared/websocket";
+
+wsService.connect();
+wsService.setAuthToken(managerId);
+wsService.joinSession({ shift_plan_id: sessionId });
+wsService.sendChatMessage(sessionId, message);
+```
+
+### API Module
+
+Use the API functions for REST calls:
+
+```tsx
+import { getSessions, createSession } from "@/shared/api";
+
+const sessions = await getSessions(managerId);
+const newSession = await createSession({ manager_id: managerId });
+```
+
+---
+
+## Component Patterns
+
+### Props Interface
+
+Define props interface above the component:
+
+```tsx
+interface ChatProps {
+  sessionId: number | null;
+  className?: string;
+}
+
+export function Chat({ sessionId, className }: ChatProps) {
+  // ...
+}
+```
+
+### Use `cn()` for Class Names
+
+Always use `cn()` from utils for conditional classes:
+
+```tsx
+import { cn } from "@/shared/utils";
+
+<div className={cn(
+  "base-classes",
+  condition && "conditional-classes",
+  className
+)} />
+```
+
+### Stable Function References
+
+Use `useCallback` for functions passed to children:
+
+```tsx
+const handleSubmit = useCallback((text: string) => {
+  sendMessage(text);
+}, [sendMessage]);
+```
+
+---
+
+## State Management
+
+### Local State
+
+Use `useState` for component-local state.
+
+### Shared State
+
+Use hooks from `shared/hooks/` for shared state:
+
+```tsx
+const { sessions, create, remove } = useSessions(managerId);
+const { messages, sendMessage } = useChatState(sessionId);
+```
+
+### Global State
+
+Auth state is global via Zustand (internal to auth module).
+
+---
+
+## File Naming
+
+- Components: PascalCase (`SessionPanel.tsx`)
+- Hooks: camelCase with `use` prefix (`useChatState.ts`)
+- Utils/constants: camelCase (`websocket.ts`)
+- Index files: `index.ts` for barrel exports
+
+---
+
+## Imports
+
+Use path aliases:
+
+```tsx
+import { cn } from "@/shared/utils";
+import { useAuth } from "@/shared/auth";
+import { Chat } from "@/components/Chat";
+```
+
+---
+
+## Error Handling
+
+Handle errors explicitly and show user-friendly messages:
+
+```tsx
+try {
+  await createSession(params);
+} catch (err) {
+  setError(err instanceof Error ? err.message : "Failed to create session");
+}
+```
+
+---
+
+## Quick Checklist
+
+- [ ] Using logical properties (ms-, me-, ps-, pe-, start-, end-)
+- [ ] Using `cn()` for class merging
+- [ ] Using `useCallback` for handlers passed to children
+- [ ] Errors handled and displayed to user
+- [ ] Hebrew text for UI labels
+- [ ] Icons that need flipping have `rtl:scale-x-[-1]`

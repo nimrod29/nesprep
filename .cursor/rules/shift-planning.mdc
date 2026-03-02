@@ -1,0 +1,186 @@
+---
+description: Shift planning domain knowledge for NesPrep
+alwaysApply: true
+---
+
+# Shift Planning Domain Rules
+
+## Overview
+
+NesPrep is a shift planning system for Israeli businesses. It handles Hebrew text, Israeli work week (Sunday-Saturday), and specific shift patterns.
+
+---
+
+## Hebrew Day Names
+
+```python
+HEBREW_DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"]
+
+# Short forms commonly used
+# א = ראשון (Sunday)
+# ב = שני (Monday)
+# ג = שלישי (Tuesday)
+# ד = רביעי (Wednesday)
+# ה = חמישי (Thursday)
+# ו = שישי (Friday)
+```
+
+---
+
+## Shift Types
+
+```python
+SHIFT_TYPES = {
+    "בוקר": {  # Morning
+        "times": ["09:00-18:00"],
+        "hours": 9,
+        "row_offsets": [6, 7, 8, 9, 10],  # 5 slots per day
+    },
+    "צהריים": {  # Afternoon
+        "times": ["10:00-19:00", "11:00-20:00", "12:00-21:00"],
+        "hours": 9,
+        "row_offsets": [11, 12, 13],  # 3 slots per day
+    },
+    "ערב": {  # Evening
+        "times": ["13:00-22:00"],
+        "hours": 9,
+        "row_offsets": [15, 16, 17, 18, 19, 20],  # 6 slots per day
+    },
+}
+```
+
+---
+
+## CSV Template Structure
+
+The system uses CSV templates with a fixed structure. Each month has multiple week blocks.
+
+### Week Block Structure (27 rows per week)
+
+```
+Row 0:  אירועי השבוע (weekly events)
+Row 1:  משימות שבועיות (weekly tasks)
+Row 2:  הטבות (benefits)
+Row 3:  Day headers (,ראשון,שני,שלישי,רביעי,חמישי,שישי,שבת)
+Row 4:  תאריך row with dates (תאריך,2.3,3.3,4.3,5.3,6.3,7.3,8.3)
+Row 5:  Empty
+
+Rows 6-10:  Morning shifts (בוקר) - 09:00-18:00 (5 slots)
+Rows 11-13: Afternoon shifts (צהריים) - 10:00-19:00, 11:00-20:00, 12:00-21:00
+Row 14:     Empty
+Rows 15-20: Evening shifts (ערב) - 13:00-22:00 (6 slots)
+
+Row 21:     רענון (training/refresh)
+Rows 22-23: הערות (notes)
+Rows 24-26: Padding/empty
+```
+
+### Column Mapping (0-indexed)
+
+```
+Column 0 = Labels (shift times)
+Column 1 = ראשון (Sunday)
+Column 2 = שני (Monday)
+Column 3 = שלישי (Tuesday)
+Column 4 = רביעי (Wednesday)
+Column 5 = חמישי (Thursday)
+Column 6 = שישי (Friday)
+Column 7 = שבת (Saturday)
+```
+
+### Date Format
+
+Dates in the template use "D.M" format (e.g., "2.3" for March 2nd).
+
+---
+
+## Constraint Types
+
+### Hard Constraints (must be satisfied)
+
+1. **Availability**: Employee can only work on specified days
+2. **Unavailability**: Employee cannot work on specified days
+3. **Max Shifts**: Maximum shifts per week
+4. **Max Hours**: Maximum hours per week
+5. **Rest Period**: Minimum hours between shifts (default 11)
+
+### Soft Constraints (preferences)
+
+1. **Preferred Shifts**: Employee prefers certain shift types
+2. **Coverage**: Each shift should have minimum staffing
+
+---
+
+## Validation Rules
+
+### Error-level (must fix)
+
+1. Employee assigned to unavailable day
+2. Employee exceeds max shifts/hours
+3. Insufficient rest between shifts
+4. Employee assigned outside availability
+
+### Warning-level (should fix)
+
+1. Shift has no coverage
+2. Employee not on preferred shift type
+3. Uneven workload distribution
+
+---
+
+## Common Hebrew Phrases in Constraints
+
+```
+"יכול/ה לעבוד" = can work
+"לא יכול/ה לעבוד" = cannot work
+"מעדיף/ה" = prefers
+"עד X משמרות" = up to X shifts
+"עד X שעות" = up to X hours
+"רק בימים" = only on days
+"חוץ מ" = except for
+"כל יום" = every day
+```
+
+---
+
+## Agent Workflow
+
+```mermaid
+sequenceDiagram
+    Manager->>PlanningChat: Set target month
+    Manager->>PlanningChat: Add employees & constraints
+    Manager->>ShiftPlanner: Generate plan
+    ShiftPlanner->>CSV: Generate fresh template
+    ShiftPlanner->>Database: Read constraints
+    ShiftPlanner->>CSV: Assign employees to shifts
+    loop Validation
+        ShiftPlanner->>Validator: Check plan
+        Validator-->>ShiftPlanner: Errors (if any)
+    end
+    ShiftPlanner->>Excel: Convert CSV to formatted Excel
+    ShiftPlanner->>Manager: Final Excel file
+```
+
+---
+
+## CSV Tools Workflow
+
+1. **generate_template(year, month)**: Create fresh CSV with correct dates
+2. **read_csv()**: View current template state
+3. **assign_shift(employee_name, day_date, shift_type)**: Assign employee
+   - day_date uses "D.M" format (e.g., "2.3" for March 2nd)
+   - shift_type: בוקר, צהריים, or ערב
+4. **get_assignments_summary()**: Check all assignments
+5. **save_csv()**: Save current state
+6. **convert_to_excel()**: Create formatted .xlsx output
+
+---
+
+## Best Practices
+
+1. **Parse Hebrew carefully**: Watch for abbreviations and variations
+2. **Prioritize hard constraints**: Never violate availability/unavailability
+3. **Balance workload**: Distribute shifts fairly among employees
+4. **Cover weekends**: שישי and שבת often need special attention
+5. **Log reasoning**: Use log_thought before every action
+6. **Use date format**: Always use "D.M" format for dates (e.g., "2.3")

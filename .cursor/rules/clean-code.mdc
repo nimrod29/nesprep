@@ -1,0 +1,167 @@
+---
+description: Clean code rules for NesPrep
+alwaysApply: true
+---
+
+# Clean Code Rules
+
+## Overview
+
+These rules prevent common mistakes that lead to messy, hard-to-maintain code. Follow them strictly.
+
+---
+
+## Core Principles
+
+### Be Explicit, Not Implicit
+
+- **Never use fallback values with `||` or `??`** - If a value might be undefined, handle it explicitly
+- Configuration should come from environment variables or explicit config, not inline fallbacks
+- If something can fail, handle the failure case explicitly
+
+```python
+# BAD - hides configuration issues
+database_url = os.getenv("DATABASE_URL") or "sqlite:///./default.db"
+
+# GOOD - fail fast if not configured
+database_url = os.getenv("DATABASE_URL")
+if not database_url:
+    raise ValueError("DATABASE_URL not configured")
+```
+
+### Robust Solutions Over Band-Aids
+
+- Don't patch symptoms - fix root causes
+- If a fix requires a comment explaining why it's weird, it's probably wrong
+- Refactoring is not scary - messy code is scary
+
+---
+
+## Module Exports
+
+### Only Export What's Needed
+
+- **Never export internal implementation details** (constants, helpers, internal types)
+- External code should use the public API, not internals
+- If something is only used within a module, keep it private
+
+```python
+# __init__.py - only export the public API
+from app.agents.base_agent import BaseAgent, BaseToolCallingAgent
+
+__all__ = ["BaseAgent", "BaseToolCallingAgent"]
+```
+
+---
+
+## Dependency Direction
+
+### No Circular Dependencies
+
+- Modules should have clear dependency direction
+- Lower-level modules (dal, utils) should NOT import from higher-level modules (agents, handlers)
+
+```
+agents → tools → dal
+agents → prompts
+handlers → agents
+```
+
+---
+
+## Error Handling
+
+### Be Explicit About Errors
+
+- Don't silently swallow errors
+- Log errors for debugging
+- Return error strings from tools rather than raising exceptions
+
+```python
+# BAD - silent failure
+try:
+    do_something()
+except:
+    pass
+
+# GOOD - handle the error explicitly
+try:
+    do_something()
+except Exception as e:
+    logger.error("Operation failed: %s", e)
+    return f"Error: {e}"
+```
+
+### Fail Fast
+
+- Validate inputs early
+- Throw errors for invalid states rather than returning None
+- Use type hints to make invalid states unrepresentable
+
+---
+
+## Code Organization
+
+### Single Responsibility
+
+- Each file should do one thing
+- If a file is doing multiple unrelated things, split it
+- Keep files under 200-300 lines
+
+### Naming Conventions
+
+- Classes: PascalCase (e.g., `ShiftPlannerAgent`)
+- Functions/methods: snake_case (e.g., `get_employee_list`)
+- Constants: SCREAMING_SNAKE_CASE (e.g., `HEBREW_DAYS`)
+- Private: prefix with underscore (e.g., `_load_constraints`)
+
+---
+
+## Database Access
+
+### Session Management
+
+- Always use `get_session()` for new sessions in tools
+- Always close sessions in `finally` blocks
+- Never share sessions across async boundaries
+
+```python
+db = get_session()
+try:
+    result = Model.create(db, ...)
+    return result
+finally:
+    db.close()
+```
+
+---
+
+## Comments and Documentation
+
+### When to Comment
+
+- Explain WHY, not WHAT (code shows what, comments explain why)
+- Document non-obvious decisions
+- Note dependencies that must stay in sync
+
+```python
+# BAD - obvious
+# Create a new employee
+employee = Employee.create(db, name=name)
+
+# GOOD - explains why
+# Hebrew day names must match the Excel template headers
+HEBREW_DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"]
+```
+
+---
+
+## Quick Checklist Before Committing
+
+- [ ] No unnecessary exports in __init__.py
+- [ ] No circular dependencies
+- [ ] No fallback values hiding configuration issues
+- [ ] Database sessions properly closed
+- [ ] Error cases handled explicitly
+- [ ] Comments explain WHY, not WHAT
+- [ ] File is under 300 lines
