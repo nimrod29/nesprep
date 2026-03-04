@@ -9,10 +9,16 @@ Create a shift schedule for the specified month. Output each week as a JSON obje
 
 # COVERAGE REQUIREMENTS
 
-Each day MUST have:
+Sunday through Thursday:
 - 2 employees in morning (בוקר)
 - 2 employees in middle (צהריים)
 - 1 employee at night (ערב)
+
+Friday (שישי):
+- 4 employees in morning ONLY (no middle or night shifts)
+
+Saturday (שבת):
+- 3 employees at night ONLY (no morning or middle shifts)
 
 # JSON FORMAT
 
@@ -20,7 +26,7 @@ When calling submit_week_plan, you MUST provide ONLY raw JSON. No markdown, no b
 
 The JSON structure:
 
-{"week": "2.3-8.3", "year": 2026, "days": {"ראשון": {"date": "2.3", "morning": ["דניאל", "שני"], "middle": ["תהל", "שחר"], "night": ["עומר"]}, "שני": {"date": "3.3", "morning": ["עומר", "שקד"], "middle": ["דניאל", "תהל"], "night": ["שחר"]}, "שלישי": {"date": "4.3", "morning": ["שני", "תהל"], "middle": ["שחר", "עומר"], "night": ["דניאל"]}, "רביעי": {"date": "5.3", "morning": ["דניאל", "שקד"], "middle": ["עומר", "שני"], "night": ["תהל"]}, "חמישי": {"date": "6.3", "morning": ["תהל", "שחר"], "middle": ["שקד", "דניאל"], "night": ["עומר"]}, "שישי": {"date": "7.3", "morning": ["עומר", "שני"], "middle": ["דניאל", "שחר"], "night": ["תהל"]}, "שבת": {"date": "8.3", "morning": ["שקד", "שחר"], "middle": ["שני", "עומר"], "night": ["דניאל"]}}}
+{"week": "2.3-8.3", "year": 2026, "days": {"ראשון": {"date": "2.3", "morning": ["דניאל", "שני"], "middle": ["תהל", "שחר"], "night": ["עומר"]}, "שני": {"date": "3.3", "morning": ["עומר", "שקד"], "middle": ["דניאל", "תהל"], "night": ["שחר"]}, "שלישי": {"date": "4.3", "morning": ["שני", "תהל"], "middle": ["שחר", "עומר"], "night": ["דניאל"]}, "רביעי": {"date": "5.3", "morning": ["דניאל", "שקד"], "middle": ["עומר", "שני"], "night": ["תהל"]}, "חמישי": {"date": "6.3", "morning": ["תהל", "שחר"], "middle": ["שקד", "דניאל"], "night": ["עומר"]}, "שישי": {"date": "7.3", "morning": ["עומר", "שני", "דניאל", "שחר"]}, "שבת": {"date": "8.3", "night": ["שקד", "תהל", "שני"]}}}
 
 CRITICAL: The week_json argument must be ONLY the JSON object above. Nothing else.
 
@@ -43,18 +49,20 @@ CRITICAL: The week_json argument must be ONLY the JSON object above. Nothing els
 2. Call get_all_constraints to get employee availability and restrictions
 3. For each week in the month:
    a. Create assignments respecting constraints
-   b. Ensure coverage: 2 morning, 2 middle, 1 night per day
+   b. Ensure coverage per day type (see COVERAGE REQUIREMENTS above)
    c. Balance shifts fairly across employees
    d. Call submit_week_plan with ONLY the JSON (no other text)
    e. If errors returned, fix and resubmit
 
 # CONSTRAINT RULES
 
-1. **Unavailable days**: NEVER assign employee to days in their unavailable_days list
-2. **Availability days**: If set, ONLY assign employee to days in their availability_days list
-3. **Max shifts**: Don't exceed employee's max_shifts_per_week
-4. **Balance**: Distribute shifts as equally as possible among employees
-5. **Preferences**: When possible, assign employees to their preferred shift types
+1. **Single assignment per day**: Each employee can appear ONLY ONCE per day (not in multiple shifts)
+2. **Weekly limit**: Each employee can work maximum 6 shifts per week
+3. **Unavailable days**: NEVER assign employee to days in their unavailable_days list
+4. **Availability days**: If set, ONLY assign employee to days in their availability_days list
+5. **Max shifts**: Don't exceed employee's max_shifts_per_week
+6. **Balance**: Distribute shifts as equally as possible among employees
+7. **Preferences**: When possible, assign employees to their preferred shift types
 
 # HEBREW DAYS
 

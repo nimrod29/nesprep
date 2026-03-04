@@ -94,6 +94,7 @@ def _validate_week_structure(data: dict) -> list[str]:
         return errors
 
     days = data.get("days", {})
+    employee_shift_counts: dict[str, int] = {}
 
     for day_name in HEBREW_DAYS:
         if day_name not in days:
@@ -105,24 +106,58 @@ def _validate_week_structure(data: dict) -> list[str]:
         if "date" not in day_data:
             errors.append(f"{day_name}: missing 'date' field")
 
+        is_friday = day_name == "שישי"
+        is_saturday = day_name == "שבת"
+
+        if is_friday:
+            if "morning" not in day_data or not isinstance(day_data.get("morning"), list):
+                errors.append(f"{day_name}: missing 'morning' field")
+            elif len(day_data["morning"]) != 4:
+                errors.append(f"{day_name}: Friday morning must have exactly 4 employees, got {len(day_data['morning'])}")
+            for shift in ["middle", "night"]:
+                if shift in day_data and isinstance(day_data[shift], list) and len(day_data[shift]) > 0:
+                    errors.append(f"{day_name}: Friday must NOT have {shift} shift")
+        elif is_saturday:
+            if "night" not in day_data or not isinstance(day_data.get("night"), list):
+                errors.append(f"{day_name}: missing 'night' field")
+            elif len(day_data["night"]) != 3:
+                errors.append(f"{day_name}: Saturday night must have exactly 3 employees, got {len(day_data['night'])}")
+            for shift in ["morning", "middle"]:
+                if shift in day_data and isinstance(day_data[shift], list) and len(day_data[shift]) > 0:
+                    errors.append(f"{day_name}: Saturday must NOT have {shift} shift")
+        else:
+            for shift in ["morning", "middle", "night"]:
+                if shift not in day_data:
+                    errors.append(f"{day_name}: missing '{shift}' field")
+                elif not isinstance(day_data[shift], list):
+                    errors.append(f"{day_name}: '{shift}' must be a list")
+
+            if "morning" in day_data and isinstance(day_data["morning"], list):
+                if len(day_data["morning"]) != 2:
+                    errors.append(f"{day_name}: morning must have exactly 2 employees, got {len(day_data['morning'])}")
+            if "middle" in day_data and isinstance(day_data["middle"], list):
+                if len(day_data["middle"]) != 2:
+                    errors.append(f"{day_name}: middle must have exactly 2 employees, got {len(day_data['middle'])}")
+            if "night" in day_data and isinstance(day_data["night"], list):
+                if len(day_data["night"]) != 1:
+                    errors.append(f"{day_name}: night must have exactly 1 employee, got {len(day_data['night'])}")
+
+        # Check for duplicate employees within the same day
+        day_employees: list[str] = []
         for shift in ["morning", "middle", "night"]:
-            if shift not in day_data:
-                errors.append(f"{day_name}: missing '{shift}' field")
-            elif not isinstance(day_data[shift], list):
-                errors.append(f"{day_name}: '{shift}' must be a list")
+            if shift in day_data and isinstance(day_data[shift], list):
+                day_employees.extend(day_data[shift])
+        seen = set()
+        for emp in day_employees:
+            if emp in seen:
+                errors.append(f"{day_name}: employee '{emp}' appears more than once in the same day")
+            seen.add(emp)
+            employee_shift_counts[emp] = employee_shift_counts.get(emp, 0) + 1
 
-        # Check coverage requirements
-        if "morning" in day_data and isinstance(day_data["morning"], list):
-            if len(day_data["morning"]) != 2:
-                errors.append(f"{day_name}: morning must have exactly 2 employees, got {len(day_data['morning'])}")
-
-        if "middle" in day_data and isinstance(day_data["middle"], list):
-            if len(day_data["middle"]) != 2:
-                errors.append(f"{day_name}: middle must have exactly 2 employees, got {len(day_data['middle'])}")
-
-        if "night" in day_data and isinstance(day_data["night"], list):
-            if len(day_data["night"]) != 1:
-                errors.append(f"{day_name}: night must have exactly 1 employee, got {len(day_data['night'])}")
+    # Check weekly shift limit (max 6 per employee)
+    for emp, count in employee_shift_counts.items():
+        if count > 6:
+            errors.append(f"Employee '{emp}' has {count} shifts this week (maximum is 6)")
 
     return errors
 

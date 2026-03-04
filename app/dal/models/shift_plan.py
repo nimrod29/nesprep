@@ -1,8 +1,9 @@
 """ShiftPlan model."""
 
 import enum
+import json
 
-from sqlalchemy import Column, Date, DateTime, Enum, ForeignKey, Integer, String
+from sqlalchemy import Column, Date, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Session, relationship
 from sqlalchemy.sql import func
 
@@ -32,6 +33,7 @@ class ShiftPlan(Base):
     status = Column(Enum(PlanStatus), default=PlanStatus.draft)
     template_path = Column(String(500), nullable=True)
     output_path = Column(String(500), nullable=True)
+    plan_json = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -98,6 +100,18 @@ class ShiftPlan(Base):
         db.commit()
         db.refresh(self)
         return self
+
+    def set_plan_data(self, db: Session, week_plans: list[dict]) -> None:
+        """Save week plans JSON to the database."""
+        self.plan_json = json.dumps(week_plans, ensure_ascii=False)
+        db.add(self)
+        db.commit()
+
+    def get_plan_data(self) -> list[dict] | None:
+        """Load week plans from the stored JSON. Returns None if no plan exists."""
+        if not self.plan_json:
+            return None
+        return json.loads(self.plan_json)
 
     def delete(self, db: Session) -> None:
         """Delete the shift plan and all related data."""

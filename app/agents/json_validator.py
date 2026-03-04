@@ -14,11 +14,15 @@ JSON_VALIDATOR_PROMPT = ChatPromptTemplate.from_messages([
 
 # VALIDATION RULES
 
-1. **Coverage**: Each day MUST have exactly 2 morning, 2 middle, 1 night
-2. **Unavailability**: Employees MUST NOT be assigned to days in their unavailable_days
-3. **Availability**: If availability_days is set, employees can ONLY work those days
-4. **Max shifts**: Employees MUST NOT exceed their max_shifts_per_week
-5. **Balance**: Shifts should be distributed fairly (warn if imbalanced)
+1. **Single assignment**: Each employee can appear ONLY ONCE per day (not in multiple shifts)
+2. **Weekly limit**: Each employee can work maximum 6 shifts per week
+3. **Coverage Sun-Thu**: Each day (Sunday-Thursday) MUST have exactly 2 morning, 2 middle, 1 night
+4. **Coverage Friday**: Friday MUST have exactly 4 morning, NO middle, NO night
+5. **Coverage Saturday**: Saturday MUST have exactly 3 night, NO morning, NO middle
+6. **Unavailability**: Employees MUST NOT be assigned to days in their unavailable_days
+7. **Availability**: If availability_days is set, employees can ONLY work those days
+8. **Max shifts**: Employees MUST NOT exceed their max_shifts_per_week
+9. **Balance**: Shifts should be distributed fairly (warn if imbalanced)
 
 # OUTPUT FORMAT
 

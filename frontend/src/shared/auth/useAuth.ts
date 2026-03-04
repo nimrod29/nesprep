@@ -5,57 +5,53 @@
 import { useCallback } from "react";
 import { useAuthStore } from "./authStore";
 import { wsService } from "../websocket";
-
-interface LoginParams {
-  managerId?: number;
-  name?: string;
-}
-
-interface LoginResponse {
-  manager_id: number;
-  name: string | null;
-}
+import { signin, signup, type SignupData, type AuthResponse } from "../api";
 
 export function useAuth() {
-  const { managerId, managerName, isLoading, setManager, clearManager, setLoading } =
+  const { managerId, managerName, isLoading, setAuth, clearAuth, setLoading } =
     useAuthStore();
 
+  const handleAuthSuccess = useCallback(
+    (data: AuthResponse) => {
+      setAuth(data.manager.id, data.manager.name, data.access_token);
+      wsService.connect();
+      wsService.setAuthToken(data.manager.id);
+    },
+    [setAuth]
+  );
+
   const login = useCallback(
-    async (params: LoginParams = {}) => {
+    async (email: string, password: string) => {
       setLoading(true);
       try {
-        const response = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            manager_id: params.managerId,
-            name: params.name,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Login failed");
-        }
-
-        const data: LoginResponse = await response.json();
-        setManager(data.manager_id, data.name);
-
-        // Connect WebSocket and set auth token
-        wsService.connect();
-        wsService.setAuthToken(data.manager_id);
-
+        const data = await signin(email, password);
+        handleAuthSuccess(data);
         return data;
       } finally {
         setLoading(false);
       }
     },
-    [setManager, setLoading]
+    [setLoading, handleAuthSuccess]
+  );
+
+  const signUp = useCallback(
+    async (params: SignupData) => {
+      setLoading(true);
+      try {
+        const data = await signup(params);
+        handleAuthSuccess(data);
+        return data;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [setLoading, handleAuthSuccess]
   );
 
   const logout = useCallback(() => {
     wsService.disconnect();
-    clearManager();
-  }, [clearManager]);
+    clearAuth();
+  }, [clearAuth]);
 
   const reconnect = useCallback(() => {
     if (managerId) {
@@ -70,6 +66,7 @@ export function useAuth() {
     isAuthenticated: managerId !== null,
     isLoading,
     login,
+    signUp,
     logout,
     reconnect,
   };

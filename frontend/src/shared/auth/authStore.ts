@@ -3,14 +3,15 @@
  */
 
 import { create } from "zustand";
-import { AUTH_STORAGE_KEY } from "./constants";
+import { AUTH_STORAGE_KEY, AUTH_TOKEN_KEY } from "./constants";
 
 interface AuthState {
   managerId: number | null;
   managerName: string | null;
+  accessToken: string | null;
   isLoading: boolean;
-  setManager: (id: number, name: string | null) => void;
-  clearManager: () => void;
+  setAuth: (id: number, name: string | null, token: string) => void;
+  clearAuth: () => void;
   setLoading: (loading: boolean) => void;
 }
 
@@ -20,16 +21,19 @@ export const useAuthStore = create<AuthState>((set) => ({
     return stored ? parseInt(stored, 10) : null;
   })(),
   managerName: null,
+  accessToken: localStorage.getItem(AUTH_TOKEN_KEY),
   isLoading: false,
 
-  setManager: (id, name) => {
+  setAuth: (id, name, token) => {
     localStorage.setItem(AUTH_STORAGE_KEY, String(id));
-    set({ managerId: id, managerName: name });
+    localStorage.setItem(AUTH_TOKEN_KEY, token);
+    set({ managerId: id, managerName: name, accessToken: token });
   },
 
-  clearManager: () => {
+  clearAuth: () => {
     localStorage.removeItem(AUTH_STORAGE_KEY);
-    set({ managerId: null, managerName: null });
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    set({ managerId: null, managerName: null, accessToken: null });
   },
 
   setLoading: (loading) => set({ isLoading: loading }),

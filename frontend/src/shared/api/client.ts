@@ -2,6 +2,8 @@
  * Base API client.
  */
 
+import { AUTH_TOKEN_KEY } from "../auth/constants";
+
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
 interface FetchOptions extends RequestInit {
@@ -23,10 +25,16 @@ export async function apiFetch<T>(
     url += `?${searchParams.toString()}`;
   }
 
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const authHeaders: Record<string, string> = token
+    ? { Authorization: `Bearer ${token}` }
+    : {};
+
   const response = await fetch(url, {
     ...fetchOptions,
     headers: {
       "Content-Type": "application/json",
+      ...authHeaders,
       ...fetchOptions.headers,
     },
   });

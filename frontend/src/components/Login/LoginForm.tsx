@@ -2,10 +2,15 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/shared/utils";
+import { useAuth } from "@/shared/auth";
 
 export function LoginForm() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { login, isLoading } = useAuth();
 
   const togglePassword = () => {
     setShowPassword((prev) => !prev);
@@ -19,17 +24,38 @@ export function LoginForm() {
     navigate("/signup");
   };
 
-  const handleSubmit: React.FormEventHandler<HTMLFormElement> = (event) => {
+  const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault();
+    setError(null);
+
+    if (!email.trim() || !password) {
+      setError("Please fill in all fields");
+      return;
+    }
+
+    try {
+      await login(email.trim(), password);
+      navigate("/");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    }
   };
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6 text-start">
+      {error && (
+        <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+          {error}
+        </div>
+      )}
+
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-[#B57A3A]">Username</label>
+          <label className="text-sm font-medium text-[#B57A3A]">Email</label>
           <input
-            type="text"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             className={cn(
               "w-full bg-transparent border-0 border-b border-[#D5C7B4]",
               "py-2 outline-none text-sm text-[#5B4A3A]"
@@ -42,6 +68,8 @@ export function LoginForm() {
           <div className="relative border-b border-[#D5C7B4]">
             <input
               type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className={cn(
                 "w-full bg-transparent border-0 outline-none py-2 text-sm text-[#5B4A3A]"
               )}
@@ -80,14 +108,16 @@ export function LoginForm() {
 
       <button
         type="submit"
+        disabled={isLoading}
         className={cn(
           "mt-2 w-full h-11 sm:h-12 rounded-md",
           "bg-[#262430] text-[#C49458]",
           "text-sm font-semibold tracking-wide",
-          "shadow-md shadow-black/20"
+          "shadow-md shadow-black/20",
+          "disabled:opacity-50 disabled:cursor-not-allowed"
         )}
       >
-        Log In
+        {isLoading ? "Logging in..." : "Log In"}
       </button>
 
       <div className="mt-10 text-center text-xs sm:text-sm text-[#B58B5A]">

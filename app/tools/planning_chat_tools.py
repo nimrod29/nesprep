@@ -488,6 +488,8 @@ class PlanningChatTools:
                     shift_plan = ShiftPlan.get_by_id(db, tools_self.shift_plan_id)
                     if shift_plan:
                         shift_plan.update_status(db, PlanStatus.completed)
+                        if week_plans:
+                            shift_plan.set_plan_data(db, week_plans)
                 finally:
                     db.close()
 
@@ -521,6 +523,162 @@ class PlanningChatTools:
 
                 return f"Error creating plan: {e}"
 
+        @tool
+        def get_current_plan() -> str:
+            """Get the current shift plan if one exists.
+
+            Call this before making any edits, or when the user asks about the current plan.
+
+            Returns:
+                A formatted text view of the plan, or a message if no plan exists.
+            """
+            from app.dal import get_session
+            from app.dal.models import ShiftPlan
+
+            db: Session = get_session()
+            try:
+                shift_plan = ShiftPlan.get_by_id(db, tools_self.shift_plan_id)
+                if not shift_plan:
+                    return "Error: Shift plan not found"
+
+                week_plans = shift_plan.get_plan_data()
+                if not week_plans:
+                    return "No plan exists yet. Use create_shift_plan to generate one."
+
+                shift_labels = {"morning": "בוקר", "middle": "צהריים", "night": "ערב"}
+                lines = [f"Current plan ({len(week_plans)} weeks):\n"]
+
+                for wp in week_plans:
+                    lines.append(f"=== שבוע {wp.get('week', '?')} ===")
+                    days = wp.get("days", {})
+                    for day_name in HEBREW_DAYS:
+                        day = days.get(day_name)
+                        if not day:
+                            continue
+                        lines.append(f"  {day_name} ({day.get('date', '')}):")
+                        for shift_key, label in shift_labels.items():
+                            employees = day.get(shift_key, [])
+                            names = ", ".join(employees) if employees else "—"
+                            lines.append(f"    {label}: {names}")
+                    lines.append("")
+
+                return "\n".join(lines)
+            finally:
+                db.close()
+
+        @tool
+        async def update_shift_plan(changes_json: str) -> str:
+            """Update the current shift plan with changes.
+
+            Args:
+                changes_json: JSON string describing the changes. Format:
+                    {"changes": [
+                        {"action": "replace", "week": "2.3-8.3", "day": "שני",
+                         "shift": "morning", "old_employee": "דניאל", "new_employee": "שחר"},
+                        {"action": "add", "week": "2.3-8.3", "day": "שני",
+                         "shift": "morning", "employee": "עומר"},
+                        {"action": "remove", "week": "2.3-8.3", "day": "שני",
+                         "shift": "morning", "employee": "דניאל"}
+                    ]}
+
+            Returns:
+                Summary of changes applied, or error message.
+            """
+            from app.dal import get_session
+            from app.dal.models import ShiftPlan
+
+            db: Session = get_session()
+            try:
+                shift_plan = ShiftPlan.get_by_id(db, tools_self.shift_plan_id)
+                if not shift_plan:
+                    return "Error: Shift plan not found"
+
+                week_plans = shift_plan.get_plan_data()
+                if not week_plans:
+                    return "Error: No plan exists yet. Use create_shift_plan first."
+
+                try:
+                    payload = json.loads(changes_json)
+                except json.JSONDecodeError as e:
+                    return f"Error: Invalid JSON — {e}"
+
+                changes = payload.get("changes", [])
+                if not changes:
+                    return "Error: No changes provided."
+
+                week_index = {wp.get("week"): wp for wp in week_plans}
+                applied = []
+                errors = []
+
+                for change in changes:
+                    action = change.get("action")
+                    week_key = change.get("week")
+                    day_name = change.get("day")
+                    shift_key = change.get("shift")
+
+                    wp = week_index.get(week_key)
+                    if not wp:
+                        errors.append(f"Week '{week_key}' not found")
+                        continue
+
+                    day_data = wp.get("days", {}).get(day_name)
+                    if not day_data:
+                        errors.append(f"Day '{day_name}' not found in week '{week_key}'")
+                        continue
+
+                    if shift_key not in day_data:
+                        errors.append(f"Shift '{shift_key}' not found in {day_name}")
+                        continue
+
+                    roster = day_data[shift_key]
+
+                    if action == "replace":
+                        old_emp = change.get("old_employee")
+                        new_emp = change.get("new_employee")
+                        if old_emp in roster:
+                            idx = roster.index(old_emp)
+                            roster[idx] = new_emp
+                            applied.append(
+                                f"Replaced {old_emp} → {new_emp} ({day_name} {shift_key})"
+                            )
+                        else:
+                            errors.append(f"{old_emp} not in {day_name} {shift_key}")
+
+                    elif action == "add":
+                        emp = change.get("employee")
+                        if emp not in roster:
+                            roster.append(emp)
+                            applied.append(f"Added {emp} to {day_name} {shift_key}")
+                        else:
+                            errors.append(f"{emp} already in {day_name} {shift_key}")
+
+                    elif action == "remove":
+                        emp = change.get("employee")
+                        if emp in roster:
+                            roster.remove(emp)
+                            applied.append(f"Removed {emp} from {day_name} {shift_key}")
+                        else:
+                            errors.append(f"{emp} not in {day_name} {shift_key}")
+
+                    else:
+                        errors.append(f"Unknown action: {action}")
+
+                shift_plan.set_plan_data(db, week_plans)
+
+                if tools_self.plan_callback:
+                    await tools_self.plan_callback(week_plans)
+
+                parts = []
+                if applied:
+                    parts.append("Changes applied:\n" + "\n".join(f"  ✓ {a}" for a in applied))
+                if errors:
+                    parts.append("Errors:\n" + "\n".join(f"  ✗ {e}" for e in errors))
+                return "\n".join(parts) if parts else "No changes were made."
+            except Exception as e:
+                return f"Error updating plan: {e}"
+            finally:
+                db.close()
+
         return [
             get_current_date,
             get_employees,
@@ -533,4 +691,6 @@ class PlanningChatTools:
             set_week_start,
             set_template_path,
             create_shift_plan,
+            get_current_plan,
+            update_shift_plan,
         ]
