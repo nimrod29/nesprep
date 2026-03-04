@@ -8,4 +8,5 @@ class EventTypes:
     CHAT_STARTED = "chat.started"
     CHAT_COMPLETED = "chat.completed"
     STATUS_UPDATE = "status.update"
+    PLAN_COMPLETED = "plan.completed"
     ERROR = "error"

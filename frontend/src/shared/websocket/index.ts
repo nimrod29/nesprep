@@ -7,5 +7,8 @@ export type {
   ChatStartedPayload,
   StatusUpdatePayload,
   ChatCompletedPayload,
+  PlanCompletedPayload,
   ErrorPayload,
+  WeekPlan,
+  DayPlan,
 } from "./types";

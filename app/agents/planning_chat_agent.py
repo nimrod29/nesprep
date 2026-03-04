@@ -21,6 +21,7 @@ class PlanningChatAgent(BaseToolCallingAgent):
         shift_plan_id: int,
         manager_id: int,
         status_callback: Callable[[str], Awaitable[None]] | None = None,
+        plan_callback: Callable[[list[dict]], Awaitable[None]] | None = None,
         model_name: str = ModelConsts.CLAUDE_SONNET_4_5,
     ):
         log_tools = LogTools()
@@ -28,6 +29,7 @@ class PlanningChatAgent(BaseToolCallingAgent):
             shift_plan_id=shift_plan_id,
             manager_id=manager_id,
             status_callback=status_callback,
+            plan_callback=plan_callback,
         )
 
         tools = log_tools.get_tools() + planning_tools.get_tools()

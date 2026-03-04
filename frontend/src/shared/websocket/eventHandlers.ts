@@ -10,6 +10,7 @@ import type {
   ChatStartedPayload,
   StatusUpdatePayload,
   ChatCompletedPayload,
+  PlanCompletedPayload,
   ErrorPayload,
 } from "./types";
 import { ServerEventTypes } from "../constants";
@@ -21,6 +22,7 @@ interface EventHandlers {
   onChatStarted?: EventCallback<ChatStartedPayload>;
   onStatusUpdate?: EventCallback<StatusUpdatePayload>;
   onChatCompleted?: EventCallback<ChatCompletedPayload>;
+  onPlanCompleted?: EventCallback<PlanCompletedPayload>;
   onError?: EventCallback<ErrorPayload>;
 }
 
@@ -61,6 +63,10 @@ export function handleServerEvent(event: ServerEvent): void {
 
     case ServerEventTypes.CHAT_COMPLETED:
       handlers.onChatCompleted?.(payload as ChatCompletedPayload, session_id);
+      break;
+
+    case ServerEventTypes.PLAN_COMPLETED:
+      handlers.onPlanCompleted?.(payload as PlanCompletedPayload, session_id);
       break;
 
     case ServerEventTypes.ERROR:

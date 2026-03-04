@@ -35,6 +35,7 @@ export const ServerEventTypes = {
   CHAT_STARTED: "chat.started",
   STATUS_UPDATE: "status.update",
   CHAT_COMPLETED: "chat.completed",
+  PLAN_COMPLETED: "plan.completed",
   ERROR: "error",
 } as const;
 

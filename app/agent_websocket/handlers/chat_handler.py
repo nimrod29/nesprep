@@ -78,11 +78,20 @@ async def handle_chat_send(
             {"message": text},
         )
 
+    async def plan_callback(week_plans: list[dict]) -> None:
+        await emit_event(
+            websocket,
+            str(shift_plan_id),
+            EventTypes.PLAN_COMPLETED,
+            {"week_plans": week_plans},
+        )
+
     try:
         agent = PlanningChatAgent(
             shift_plan_id=shift_plan_id,
             manager_id=manager_id,
             status_callback=status_callback,
+            plan_callback=plan_callback,
         )
 
         response = await agent.run(message, chat_history)

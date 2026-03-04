@@ -4,12 +4,21 @@
 
 import { cn } from "@/shared/utils";
 import type { ChatMessage as ChatMessageType } from "@/shared/hooks";
+import { ShiftPlanTable } from "./ShiftPlanTable";
 
 interface ChatMessageProps {
   message: ChatMessageType;
 }
 
 export function ChatMessage({ message }: ChatMessageProps) {
+  if (message.type === "plan" && message.weekPlans) {
+    return (
+      <div className="flex justify-start">
+        <ShiftPlanTable weekPlans={message.weekPlans} />
+      </div>
+    );
+  }
+
   const isUser = message.type === "user";
 
   return (

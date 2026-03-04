@@ -9,14 +9,17 @@ import {
   setEventHandlers,
   type StatusUpdatePayload,
   type ChatCompletedPayload,
+  type PlanCompletedPayload,
   type ErrorPayload,
   type SessionJoinedPayload,
+  type WeekPlan,
 } from "../websocket";
 
 export interface ChatMessage {
   id: string;
-  type: "user" | "assistant" | "status";
+  type: "user" | "assistant" | "status" | "plan";
   content: string;
+  weekPlans?: WeekPlan[];
   timestamp: Date;
 }
 
@@ -102,6 +105,17 @@ export function useChatState(sessionId: number | null) {
           };
           setMessages((prev) => [...prev, newMessage]);
         }
+      },
+
+      onPlanCompleted: (payload: PlanCompletedPayload) => {
+        const planMessage: ChatMessage = {
+          id: `plan_${Date.now()}`,
+          type: "plan",
+          content: "",
+          weekPlans: payload.week_plans,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, planMessage]);
       },
 
       onError: (payload: ErrorPayload) => {

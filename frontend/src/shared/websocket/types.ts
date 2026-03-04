@@ -12,6 +12,7 @@ export type ServerEventType =
   | "chat.started"
   | "status.update"
   | "chat.completed"
+  | "plan.completed"
   | "error";
 
 export type ConnectionState =
@@ -90,4 +91,21 @@ export interface ChatCompletedPayload {
 export interface ErrorPayload {
   code: string;
   message: string;
+}
+
+export interface PlanCompletedPayload {
+  week_plans: WeekPlan[];
+}
+
+export interface DayPlan {
+  date: string;
+  morning: string[];
+  middle: string[];
+  night: string[];
+}
+
+export interface WeekPlan {
+  week: string;
+  year: number;
+  days: Record<string, DayPlan>;
 }

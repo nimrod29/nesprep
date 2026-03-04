@@ -26,10 +26,12 @@ class PlanningChatTools:
         shift_plan_id: int,
         manager_id: int,
         status_callback: Callable[[str], Awaitable[None]] | None = None,
+        plan_callback: Callable[[list[dict]], Awaitable[None]] | None = None,
     ):
         self.shift_plan_id = shift_plan_id
         self.manager_id = manager_id
         self.status_callback = status_callback
+        self.plan_callback = plan_callback
 
     def get_tools(self) -> list:
         """Return the list of planning chat tools."""
@@ -491,6 +493,9 @@ class PlanningChatTools:
 
                 if not week_plans:
                     return "Planning completed but no week plans were accepted. Check constraints."
+
+                if tools_self.plan_callback:
+                    await tools_self.plan_callback(week_plans)
 
                 result = (
                     f"Plan created successfully!\n"
