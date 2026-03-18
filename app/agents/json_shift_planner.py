@@ -177,7 +177,7 @@ class JsonShiftPlannerAgent(BaseToolCallingAgent):
         self._constraints: dict | None = None
         self._week_plans: list[dict] = []
         self._validation_attempts: int = 0
-        self._max_validation_attempts: int = 3
+        self._max_validation_attempts: int = 10
         self._validator = JsonValidatorAgent(
             model_name=model_name,
             status_callback=status_callback,
@@ -185,10 +185,18 @@ class JsonShiftPlannerAgent(BaseToolCallingAgent):
 
         tools = self._create_tools()
 
+        today = date.today()
+        day_index = (today.weekday() + 1) % 7
+        formatted_prompt = JSON_SHIFT_PLANNER_SYSTEM_PROMPT.format(
+            current_date=today.strftime("%d/%m/%Y"),
+            current_year=today.year,
+            current_day_hebrew=HEBREW_DAYS[day_index],
+        )
+
         super().__init__(
             agent_name="JsonShiftPlanner",
             tools=tools,
-            system_prompt=JSON_SHIFT_PLANNER_SYSTEM_PROMPT,
+            system_prompt=formatted_prompt,
             model_name=model_name,
             status_callback=status_callback,
             max_iterations=100,
@@ -312,25 +320,11 @@ class JsonShiftPlannerAgent(BaseToolCallingAgent):
 
             week_label = data.get("week", "unknown")
             await _status(f"בודק JSON לשבוע {week_label}...")
-
-            # Step 2: Validate structure with code
-            await _status(f"מאמת מבנה שבוע {week_label}...")
-            structure_errors = _validate_week_structure(data)
-            if structure_errors:
-                logger.info("Structure errors: %s", structure_errors)
-                return f"Structure errors: {'; '.join(structure_errors)}"
-
-            # Step 3: AI validation for constraints and balance
-            if tools_self._constraints is None:
-                return "Error: Call get_all_constraints first before submitting plans."
+            # region agent log
+            import time as _t; open("/Users/nmrwdsny/projects/nesprep/.cursor/debug-4fbabf.log", "a").write('{"sessionId":"4fbabf","location":"json_shift_planner.py:submit_entry","message":"submit_called","data":{"week":"' + week_label + '","validation_attempts":' + str(tools_self._validation_attempts) + ',"max":' + str(tools_self._max_validation_attempts) + '},"timestamp":' + str(int(_t.time()*1000)) + ',"hypothesisId":"C"}\n')
+            # endregion
 
             tools_self._validation_attempts += 1
-            total_weeks = len(tools_self._week_plans) + 1
-            logger.info(
-                "Validation attempt %d for week %s",
-                tools_self._validation_attempts,
-                week_label,
-            )
 
             # Accept after max attempts to avoid infinite loops
             if tools_self._validation_attempts > tools_self._max_validation_attempts:
@@ -342,6 +336,26 @@ class JsonShiftPlannerAgent(BaseToolCallingAgent):
                     f"Week plan accepted (after max retries): {week_label}. "
                     f"Total weeks submitted: {len(tools_self._week_plans)}"
                 )
+
+            # Step 2: Validate structure with code
+            await _status(f"מאמת מבנה שבוע {week_label}...")
+            structure_errors = _validate_week_structure(data)
+            if structure_errors:
+                logger.info("Structure errors: %s", structure_errors)
+                # region agent log
+                import time as _t; open("/Users/nmrwdsny/projects/nesprep/.cursor/debug-4fbabf.log", "a").write('{"sessionId":"4fbabf","location":"json_shift_planner.py:submit_week_plan","message":"structure_errors","data":{"errors":' + json.dumps(structure_errors, ensure_ascii=False) + ',"week":"' + week_label + '","days_keys":' + json.dumps(list(data.get("days", {}).keys()), ensure_ascii=False) + ',"attempt":' + str(tools_self._validation_attempts) + '},"timestamp":' + str(int(_t.time()*1000)) + ',"hypothesisId":"A"}\n')
+                # endregion
+                return f"Structure errors: {'; '.join(structure_errors)}"
+
+            # Step 3: AI validation for constraints and balance
+            if tools_self._constraints is None:
+                return "Error: Call get_all_constraints first before submitting plans."
+
+            logger.info(
+                "Validation attempt %d for week %s",
+                tools_self._validation_attempts,
+                week_label,
+            )
 
             await _status(
                 f"מאמת אילוצים לשבוע {week_label} "

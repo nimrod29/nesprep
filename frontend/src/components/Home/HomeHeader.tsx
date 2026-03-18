@@ -1,18 +1,15 @@
 import { cn } from "@/shared/utils";
-import { useNavigate } from "react-router-dom";
 
-export function HomeHeader() {
-  const navigate = useNavigate();
+interface HomeHeaderProps {
+  onLoginClick?: () => void;
+}
 
-  const handleLoginClick = () => {
-    navigate("/login");
-  };
-
+export function HomeHeader({ onLoginClick }: HomeHeaderProps) {
   return (
     <div className="flex items-center justify-between">
       <button
         type="button"
-        onClick={handleLoginClick}
+        onClick={onLoginClick}
         className={cn(
           "inline-flex items-center justify-center rounded-full",
           "h-10 px-[22px] text-[15px] font-medium",

@@ -3,8 +3,9 @@
 import json
 import logging
 import os
+from calendar import monthrange
 from collections.abc import Awaitable, Callable
-from datetime import date
+from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
 from langchain_core.tools import tool
@@ -16,6 +17,12 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
+
+HEBREW_MONTH_NAMES = {
+    1: "ינואר", 2: "פברואר", 3: "מרץ", 4: "אפריל",
+    5: "מאי", 6: "יוני", 7: "יולי", 8: "אוגוסט",
+    9: "ספטמבר", 10: "אוקטובר", 11: "נובמבר", 12: "דצמבר",
+}
 
 
 class PlanningChatTools:
@@ -461,6 +468,9 @@ class PlanningChatTools:
 
             if tools_self.status_callback:
                 await tools_self.status_callback("Starting JSON shift plan generation...")
+            # region agent log
+            import time as _t; open("/Users/nmrwdsny/projects/nesprep/.cursor/debug-4fbabf.log", "a").write('{"sessionId":"4fbabf","location":"planning_chat_tools.py:create_shift_plan","message":"create_shift_plan_entered","data":{"shift_plan_id":' + str(tools_self.shift_plan_id) + ',"target_month":' + str(target_month) + '},"timestamp":' + str(int(_t.time()*1000)) + ',"hypothesisId":"E"}\n')
+            # endregion
 
             hebrew_months = {
                 1: "ינואר", 2: "פברואר", 3: "מרץ", 4: "אפריל",
@@ -679,6 +689,39 @@ class PlanningChatTools:
             finally:
                 db.close()
 
+        @tool
+        def get_month_calendar(month: int, year: int) -> str:
+            """Get all dates in a month with their corresponding Hebrew day names.
+
+            Args:
+                month: Month number (1-12).
+                year: Year (e.g. 2026).
+
+            Returns:
+                JSON with every date in the month and its Hebrew day name.
+            """
+            if month < 1 or month > 12:
+                return json.dumps({"error": f"Invalid month {month}. Must be 1-12."}, ensure_ascii=False)
+
+            _, days_in_month = monthrange(year, month)
+            month_name = HEBREW_MONTH_NAMES.get(month, str(month))
+
+            days = []
+            for day_num in range(1, days_in_month + 1):
+                d = date(year, month, day_num)
+                day_index = (d.weekday() + 1) % 7
+                days.append({
+                    "date": f"{d.day}.{d.month}",
+                    "day_name": HEBREW_DAYS[day_index],
+                    "full_date": d.isoformat(),
+                })
+
+            return json.dumps(
+                {"month": month, "year": year, "month_name": month_name, "days": days},
+                ensure_ascii=False,
+                indent=2,
+            )
+
         return [
             get_current_date,
             get_employees,
@@ -693,4 +736,5 @@ class PlanningChatTools:
             create_shift_plan,
             get_current_plan,
             update_shift_plan,
+            get_month_calendar,
         ]

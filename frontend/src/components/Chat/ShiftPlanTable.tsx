@@ -44,14 +44,14 @@ interface WeekTableProps {
 
 function WeekTable({ week }: WeekTableProps) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-zinc-600">
+    <div className="overflow-x-auto rounded-xl border border-primary-200">
       <div className="bg-primary-500 text-white px-4 py-2 text-sm font-semibold">
         שבוע {week.week}
       </div>
       <table className="w-full text-sm border-collapse">
         <thead>
-          <tr className="bg-gray-50 dark:bg-zinc-700">
-            <th className="border-b border-e border-gray-200 dark:border-zinc-600 px-3 py-2 text-start font-medium text-gray-500 dark:text-gray-400 w-20">
+          <tr className="bg-primary-50">
+            <th className="border-b border-e border-primary-200 px-3 py-2 text-start font-medium text-primary-800 w-20">
               משמרת
             </th>
             {HEBREW_DAYS.map((day) => {
@@ -59,11 +59,11 @@ function WeekTable({ week }: WeekTableProps) {
               return (
                 <th
                   key={day}
-                  className="border-b border-e border-gray-200 dark:border-zinc-600 px-2 py-2 text-center font-medium text-gray-700 dark:text-gray-200 last:border-e-0"
+                  className="border-b border-e border-primary-200 px-2 py-2 text-center font-medium text-primary-900 last:border-e-0"
                 >
                   <div>{day}</div>
                   {dayData && (
-                    <div className="text-xs text-gray-400 dark:text-gray-500 font-normal">
+                    <div className="text-xs text-primary-400 font-normal">
                       {dayData.date}
                     </div>
                   )}
@@ -76,13 +76,9 @@ function WeekTable({ week }: WeekTableProps) {
           {SHIFT_LABELS.map(({ key, label }, rowIdx) => (
             <tr
               key={key}
-              className={cn(
-                rowIdx % 2 === 0
-                  ? "bg-white dark:bg-zinc-800"
-                  : "bg-gray-50/50 dark:bg-zinc-800/50"
-              )}
+              className={rowIdx % 2 === 0 ? "bg-white" : "bg-primary-50/30"}
             >
-              <td className="border-b border-e border-gray-200 dark:border-zinc-600 px-3 py-2 font-medium text-gray-600 dark:text-gray-300">
+              <td className="border-b border-e border-primary-200 px-3 py-2 font-medium text-primary-800">
                 {label}
               </td>
               {HEBREW_DAYS.map((day) => {
@@ -93,7 +89,7 @@ function WeekTable({ week }: WeekTableProps) {
                 return (
                   <td
                     key={day}
-                    className="border-b border-e border-gray-200 dark:border-zinc-600 px-2 py-2 text-center text-gray-800 dark:text-gray-200 last:border-e-0"
+                    className="border-b border-e border-primary-200 px-2 py-2 text-center text-primary-900 last:border-e-0"
                   >
                     {employees?.length ? (
                       <div className="flex flex-col gap-0.5">
@@ -104,7 +100,7 @@ function WeekTable({ week }: WeekTableProps) {
                         ))}
                       </div>
                     ) : (
-                      <span className="text-gray-300 dark:text-zinc-600">—</span>
+                      <span className="text-primary-200">—</span>
                     )}
                   </td>
                 );

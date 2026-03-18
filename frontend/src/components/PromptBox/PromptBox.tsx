@@ -1,5 +1,5 @@
 /**
- * PromptBox - chat input component with send button.
+ * PromptBox - chat input styled to match the landing page prompt.
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
@@ -26,7 +26,6 @@ export function PromptBox({
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-resize textarea
   useEffect(() => {
     const textarea = textareaRef.current;
     if (textarea) {
@@ -56,10 +55,12 @@ export function PromptBox({
   return (
     <div
       className={cn(
-        "flex items-end gap-2 p-3 rounded-xl",
-        "bg-gray-100 dark:bg-zinc-700",
-        "border border-gray-200 dark:border-zinc-600",
-        "focus-within:border-primary-500 dark:focus-within:border-primary-400",
+        "flex items-end gap-3 px-5 py-3",
+        "rounded-2xl",
+        "border border-primary-300/70",
+        "bg-[rgba(255,248,240,0.85)]",
+        "shadow-[0_8px_20px_rgba(0,0,0,0.06)]",
+        "focus-within:border-primary-500",
         "transition-colors",
         className
       )}
@@ -74,8 +75,8 @@ export function PromptBox({
         rows={1}
         className={cn(
           "flex-1 resize-none bg-transparent",
-          "text-gray-900 dark:text-gray-100",
-          "placeholder:text-gray-500 dark:placeholder:text-gray-400",
+          "text-primary-800",
+          "placeholder:text-primary-600/50",
           "focus:outline-none",
           "disabled:opacity-50"
         )}
@@ -85,28 +86,29 @@ export function PromptBox({
         <button
           onClick={onStop}
           className={cn(
-            "p-2 rounded-lg transition-colors",
-            "bg-red-500 hover:bg-red-600",
-            "text-white"
+            "shrink-0 inline-flex items-center justify-center",
+            "h-10 w-10 rounded-full",
+            "bg-red-500 hover:bg-red-600 text-white",
+            "transition-colors shadow-md"
           )}
           title="עצור"
         >
-          <Square className="h-5 w-5" />
+          <Square className="h-4 w-4" />
         </button>
       ) : (
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
           className={cn(
-            "p-2 rounded-lg transition-colors",
-            canSubmit
-              ? "bg-primary-500 hover:bg-primary-600 text-white"
-              : "bg-gray-300 dark:bg-zinc-600 text-gray-500 dark:text-gray-400",
-            "disabled:cursor-not-allowed"
+            "shrink-0 inline-flex items-center justify-center",
+            "h-10 w-10 rounded-full",
+            "transition-opacity shadow-md",
+            "bg-primary-500 text-white",
+            !canSubmit && "opacity-60 cursor-not-allowed"
           )}
           title="שלח"
         >
-          <Send className="h-5 w-5 rtl:scale-x-[-1]" />
+          <Send className="h-4 w-4 rtl:scale-x-[-1]" />
         </button>
       )}
     </div>
