@@ -52,10 +52,15 @@ export function PromptBox({
 
   const canSubmit = value.trim().length > 0 && !isLoading && !disabled;
 
+  const handleContainerClick = useCallback(() => {
+    textareaRef.current?.focus();
+  }, []);
+
   return (
     <div
+      onClick={handleContainerClick}
       className={cn(
-        "flex items-end gap-3 px-5 py-3",
+        "flex items-end gap-3 px-5 py-3 cursor-text",
         "rounded-2xl",
         "border border-primary-300/70",
         "bg-[rgba(255,248,240,0.85)]",

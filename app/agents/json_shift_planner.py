@@ -320,9 +320,6 @@ class JsonShiftPlannerAgent(BaseToolCallingAgent):
 
             week_label = data.get("week", "unknown")
             await _status(f"בודק JSON לשבוע {week_label}...")
-            # region agent log
-            import time as _t; open("/Users/nmrwdsny/projects/nesprep/.cursor/debug-4fbabf.log", "a").write('{"sessionId":"4fbabf","location":"json_shift_planner.py:submit_entry","message":"submit_called","data":{"week":"' + week_label + '","validation_attempts":' + str(tools_self._validation_attempts) + ',"max":' + str(tools_self._max_validation_attempts) + '},"timestamp":' + str(int(_t.time()*1000)) + ',"hypothesisId":"C"}\n')
-            # endregion
 
             tools_self._validation_attempts += 1
 
@@ -342,9 +339,6 @@ class JsonShiftPlannerAgent(BaseToolCallingAgent):
             structure_errors = _validate_week_structure(data)
             if structure_errors:
                 logger.info("Structure errors: %s", structure_errors)
-                # region agent log
-                import time as _t; open("/Users/nmrwdsny/projects/nesprep/.cursor/debug-4fbabf.log", "a").write('{"sessionId":"4fbabf","location":"json_shift_planner.py:submit_week_plan","message":"structure_errors","data":{"errors":' + json.dumps(structure_errors, ensure_ascii=False) + ',"week":"' + week_label + '","days_keys":' + json.dumps(list(data.get("days", {}).keys()), ensure_ascii=False) + ',"attempt":' + str(tools_self._validation_attempts) + '},"timestamp":' + str(int(_t.time()*1000)) + ',"hypothesisId":"A"}\n')
-                # endregion
                 return f"Structure errors: {'; '.join(structure_errors)}"
 
             # Step 3: AI validation for constraints and balance

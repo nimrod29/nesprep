@@ -468,9 +468,6 @@ class PlanningChatTools:
 
             if tools_self.status_callback:
                 await tools_self.status_callback("Starting JSON shift plan generation...")
-            # region agent log
-            import time as _t; open("/Users/nmrwdsny/projects/nesprep/.cursor/debug-4fbabf.log", "a").write('{"sessionId":"4fbabf","location":"planning_chat_tools.py:create_shift_plan","message":"create_shift_plan_entered","data":{"shift_plan_id":' + str(tools_self.shift_plan_id) + ',"target_month":' + str(target_month) + '},"timestamp":' + str(int(_t.time()*1000)) + ',"hypothesisId":"E"}\n')
-            # endregion
 
             hebrew_months = {
                 1: "ינואר", 2: "פברואר", 3: "מרץ", 4: "אפריל",
